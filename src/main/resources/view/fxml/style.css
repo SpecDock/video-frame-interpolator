@@ -1,0 +1,98 @@
+/* 全局背景与字体设置 */
+.root {
+    -fx-background-color: #F8FAFC; /* 极浅的现代灰蓝色背景 */
+    -fx-font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+}
+
+/* 现代卡片样式 (替代原先的黑框) */
+.card {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-border-color: #E2E8F0;
+    -fx-border-width: 1;
+    -fx-padding: 20;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.04), 15, 0, 0, 4);
+}
+
+/* 列表标题字体 */
+.title-label {
+    -fx-font-weight: bold;
+    -fx-font-size: 15px;
+    -fx-text-fill: #1E293B;
+}
+
+/* 列表视图去边框，融入卡片 */
+.list-view {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+.list-cell {
+    -fx-background-color: transparent;
+    -fx-padding: 10 12;
+    -fx-text-fill: #475569;
+    -fx-border-color: #F1F5F9;
+    -fx-border-width: 0 0 1 0;
+}
+.list-cell:selected {
+    -fx-background-color: #EFF6FF;
+    -fx-background-radius: 6;
+    -fx-text-fill: #2563EB;
+}
+
+/* 进度条现代化 */
+.progress-bar {
+    -fx-accent: #3B82F6; /* 现代亮蓝色 */
+    -fx-control-inner-background: #F1F5F9;
+}
+.progress-bar .track {
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+}
+.progress-bar .bar {
+    -fx-background-radius: 10;
+    -fx-padding: 0.4em;
+}
+
+/* 标准按钮样式 */
+.button-primary {
+    -fx-background-color: #3B82F6;
+    -fx-text-fill: white;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+    -fx-font-weight: bold;
+}
+.button-primary:hover {
+    -fx-background-color: #2563EB;
+}
+
+/* 圆形启停按钮 */
+.circle-button {
+    -fx-background-radius: 50em;
+    -fx-border-radius: 50em;
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #3B82F6;
+    -fx-border-width: 2;
+    -fx-text-fill: #3B82F6;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(three-pass-box, rgba(59, 130, 246, 0.2), 15, 0, 0, 6);
+}
+.circle-button:hover {
+    -fx-background-color: #EFF6FF;
+}
+
+/* 拖拽上传区域 */
+.drop-area {
+    -fx-border-color: #CBD5E1;
+    -fx-border-width: 2;
+    -fx-border-style: dashed;
+    -fx-border-radius: 12;
+    -fx-background-color: #F8FAFC;
+    -fx-background-radius: 12;
+    -fx-cursor: hand;
+}
+.drop-area:hover {
+    -fx-background-color: #EFF6FF;
+    -fx-border-color: #3B82F6;
+}

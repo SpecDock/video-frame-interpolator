@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox xmlns:fx="http://javafx.com/fxml" fx:controller="com.github.specdock.videoframeinterpolator.view.controller.AddVideoController"
+      spacing="30" prefWidth="480" prefHeight="320" stylesheets="@style.css">
+
+    <padding><Insets top="35" right="30" bottom="30" left="30"/></padding>
+
+    <HBox spacing="35" alignment="CENTER_LEFT" VBox.vgrow="ALWAYS">
+        <VBox spacing="15" alignment="CENTER_LEFT">
+            <Label text="插帧算法" styleClass="title-label"/>
+            <fx:define>
+                <ToggleGroup fx:id="algorithmGroup"/>
+            </fx:define>
+            <RadioButton fx:id="gpuRadio" text="Gpu 插帧 (推荐)" toggleGroup="$algorithmGroup" selected="true"/>
+            <RadioButton fx:id="cpuRadio" text="Cpu 插帧" toggleGroup="$algorithmGroup"/>
+        </VBox>
+
+        <StackPane fx:id="fileDropArea" onMouseClicked="#handleFileSelect" onDragOver="#handleDragOver" onDragDropped="#handleDragDropped"
+                   styleClass="drop-area" prefWidth="280" prefHeight="160">
+            <VBox alignment="CENTER" spacing="10">
+                <Label text="+" style="-fx-font-size: 40px; -fx-text-fill: #94A3B8;"/>
+                <Label fx:id="filePathLabel" text="拖动视频到此处或点击选择" textFill="#64748B" wrapText="true" textAlignment="CENTER"/>
+            </VBox>
+        </StackPane>
+    </HBox>
+
+    <HBox alignment="CENTER">
+        <Button text="确 认 添 加" onAction="#submitAdd" styleClass="button-primary" style="-fx-padding: 12 50; -fx-font-size: 14px;"/>
+    </HBox>
+</VBox>

@@ -1,0 +1,3 @@
+video-frame-interpolator:
+  originalInputDirectory: 'storage'
+  targetOutputDirectory: 'storage'
