@@ -6,7 +6,7 @@
 
     <groupId>com.github.specdock</groupId>
     <artifactId>video-frame-interpolator</artifactId>
-    <version>1.0-release</version>
+    <version>1.1-release</version>
 
     <properties>
         <javacv.version>1.5.11</javacv.version>
@@ -26,6 +26,19 @@
             <groupId>org.bytedeco</groupId>
             <artifactId>javacv</artifactId>
             <version>${javacv.version}</version>
+            <exclusions>
+                <!-- Keep only FFmpeg/OpenCV path; exclude capture/OCR stacks not used by this app -->
+                <exclusion><groupId>org.bytedeco</groupId><artifactId>flycapture</artifactId></exclusion>
+                <exclusion><groupId>org.bytedeco</groupId><artifactId>libdc1394</artifactId></exclusion>
+                <exclusion><groupId>org.bytedeco</groupId><artifactId>libfreenect</artifactId></exclusion>
+                <exclusion><groupId>org.bytedeco</groupId><artifactId>libfreenect2</artifactId></exclusion>
+                <exclusion><groupId>org.bytedeco</groupId><artifactId>librealsense</artifactId></exclusion>
+                <exclusion><groupId>org.bytedeco</groupId><artifactId>librealsense2</artifactId></exclusion>
+                <exclusion><groupId>org.bytedeco</groupId><artifactId>videoinput</artifactId></exclusion>
+                <exclusion><groupId>org.bytedeco</groupId><artifactId>artoolkitplus</artifactId></exclusion>
+                <exclusion><groupId>org.bytedeco</groupId><artifactId>leptonica</artifactId></exclusion>
+                <exclusion><groupId>org.bytedeco</groupId><artifactId>tesseract</artifactId></exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
@@ -52,22 +65,11 @@
             <classifier>windows-x86_64</classifier>
         </dependency>
 
-        <dependency>
-            <groupId>org.bytedeco</groupId>
-            <artifactId>ffmpeg</artifactId>
-            <version>${javacpp.ffmpeg.version}</version>
-        </dependency>
         <dependency>
             <groupId>org.bytedeco</groupId>
             <artifactId>ffmpeg</artifactId>
             <version>${javacpp.ffmpeg.version}</version>
             <classifier>${javacpp.windows.ffmpeg.classifier}</classifier>
-        </dependency>
-        <dependency>
-            <groupId>org.bytedeco</groupId>
-            <artifactId>ffmpeg-platform-gpl</artifactId>
-            <version>${javacpp.ffmpeg.version}</version>
-            <scope>runtime</scope>
         </dependency>
 
         <dependency>
