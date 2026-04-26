@@ -6,11 +6,17 @@ import com.github.specdock.videoframeinterpolator.sdk.handler.FrameHandler;
 import com.github.specdock.videoframeinterpolator.sdk.msg.EncodedFramesMessage;
 import com.github.specdock.videoframeinterpolator.sdk.msg.TailFrameMessage;
 import com.github.specdock.videoframeinterpolator.sdk.util.CodecMetadataMirror;
+import com.github.specdock.videoframeinterpolator.sdk.util.HardwareProbeUtility;
+import org.bytedeco.ffmpeg.global.avcodec;
+import org.bytedeco.ffmpeg.global.avutil;
 import org.bytedeco.javacpp.Loader;
 import org.bytedeco.javacv.FFmpegFrameGrabber;
 import org.bytedeco.javacv.FFmpegFrameRecorder;
 import org.bytedeco.javacv.Frame;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -25,6 +31,11 @@ import java.util.concurrent.LinkedBlockingQueue;
  * 【重构重点】：引入 VBV 码率平滑机制，限制瞬时峰值，锁定 YUV420P 兼容格式，并实现色彩空间直通防止发灰。
  */
 public class VideoFrameAbrEncoder implements FrameHandler {
+
+    private static final String[] WINDOWS_GPU_HWACCEL_PRIORITY = {"d3d11va", "dxva2", "cuda"};
+    private static final String[] WINDOWS_GPU_ENCODER_PRIORITY = {"h264_nvenc", "h264_qsv", "h264_amf"};
+    private static final Object CODEC_MODE_LOCK = new Object();
+    private static volatile String CODEC_MODE = "";
 
     private volatile String currentVideoId = null;
     private final BlockingQueue<EncodedFramesMessage> frameQueue = new LinkedBlockingQueue<>(50);
@@ -66,6 +77,8 @@ public class VideoFrameAbrEncoder implements FrameHandler {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+
+
     }
 
 
@@ -113,15 +126,13 @@ public class VideoFrameAbrEncoder implements FrameHandler {
 
                 CodecMetadataMirror.ColorMetadata colorMetadata;
 
-                try (var metaGrabber = new FFmpegFrameGrabber(initMsg.originalVideoPath())) {
-                    metaGrabber.start();
+                try (var metaGrabber = createAdaptiveDecodeGrabber(initMsg.originalVideoPath())) {
                     originalVideoCodec = metaGrabber.getVideoCodec();
                     originalVideoBitrate = metaGrabber.getVideoBitrate();
                     originalFps = metaGrabber.getFrameRate();
                     originalTotalFrames = metaGrabber.getLengthInVideoFrames();
 
                     colorMetadata = CodecMetadataMirror.extract(metaGrabber);
-                    metaGrabber.stop();
                 }
 
                 long totalTargetFrames = originalFps > 0 ?
@@ -130,14 +141,21 @@ public class VideoFrameAbrEncoder implements FrameHandler {
 
                 // 2. 阶段一：纯视频高保真压制
                 try (var recorder = new FFmpegFrameRecorder(tempVideoPath.toString(), initMsg.width(), initMsg.height(), 0)) {
+                    String codecMode = resolveCodecMode();
+                    String selectedGpuEncoder = "GPU".equals(codecMode) ? resolveGpuEncoderName() : null;
 
                     // ==========================================
                     // 核心模块 B：全量映射参数与码率突发限制
                     // ==========================================
-                    recorder.setVideoCodec(originalVideoCodec);
+                    if (selectedGpuEncoder != null) {
+                        recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264);
+                        recorder.setVideoCodecName(selectedGpuEncoder);
+                    } else {
+                        recorder.setVideoCodec(originalVideoCodec);
+                    }
                     recorder.setFormat("mp4");
                     recorder.setFrameRate(initMsg.targetFps());
-                    recorder.setPixelFormat(org.bytedeco.ffmpeg.global.avutil.AV_PIX_FMT_YUV420P);
+                    recorder.setPixelFormat(avutil.AV_PIX_FMT_YUV420P);
 
                     CodecMetadataMirror.apply(colorMetadata, recorder);
 
@@ -155,10 +173,16 @@ public class VideoFrameAbrEncoder implements FrameHandler {
                         recorder.setVideoOption("bufsize", "30000000");
                     }
 
-                    recorder.setVideoOption("preset", "slow");
-                    recorder.setVideoOption("tune", "animation");
+                    if (selectedGpuEncoder != null) {
+                        recorder.setVideoOption("preset", "p5");
+                        recorder.setVideoOption("rc", "vbr");
+                    } else {
+                        recorder.setVideoOption("preset", "slow");
+                        recorder.setVideoOption("tune", "animation");
+                    }
                     recorder.start();
-                    System.out.println("阶段一：ABR 限制压制线程已启动，输出文件: " + tempVideoPath.getFileName());
+                    String activeEncoder = selectedGpuEncoder != null ? selectedGpuEncoder : String.valueOf(originalVideoCodec);
+                    System.out.println("阶段一：ABR 限制压制线程已启动，编解码模式=" + codecMode + "，视频编码器=" + activeEncoder + "，输出文件: " + tempVideoPath.getFileName());
 
                     long frameIntervalUs = (long) (1_000_000.0 / initMsg.targetFps());
                     long currentVideoPtsUs = 0;
@@ -234,5 +258,97 @@ public class VideoFrameAbrEncoder implements FrameHandler {
         if (processBuilder.start().waitFor() != 0) {
             throw new RuntimeException("底层 FFmpeg 合并进程执行异常");
         }
+    }
+
+    private FFmpegFrameGrabber createAdaptiveDecodeGrabber(String sourcePath) throws Exception {
+        if (!"GPU".equals(resolveCodecMode())) {
+            FFmpegFrameGrabber cpuGrabber = new FFmpegFrameGrabber(sourcePath);
+            cpuGrabber.start();
+            System.out.println("元数据读取使用 CPU 软解码");
+            return cpuGrabber;
+        }
+
+        Exception lastException = null;
+        for (String hwaccel : WINDOWS_GPU_HWACCEL_PRIORITY) {
+            FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(sourcePath);
+            try {
+                grabber.setOption("hwaccel", hwaccel);
+                if ("cuda".equals(hwaccel)) {
+                    grabber.setOption("hwaccel_output_format", "cuda");
+                }
+                grabber.start();
+                System.out.println("元数据读取启用 GPU 解码策略: " + hwaccel);
+                return grabber;
+            } catch (Exception e) {
+                lastException = e;
+                releaseGrabberQuietly(grabber);
+            }
+        }
+
+        FFmpegFrameGrabber fallbackGrabber = new FFmpegFrameGrabber(sourcePath);
+        try {
+            fallbackGrabber.start();
+            System.out.println("GPU 解码策略全部回退，使用软件解码读取元数据");
+            return fallbackGrabber;
+        } catch (Exception e) {
+            releaseGrabberQuietly(fallbackGrabber);
+            if (lastException != null) {
+                e.addSuppressed(lastException);
+            }
+            throw e;
+        }
+    }
+
+    private void releaseGrabberQuietly(FFmpegFrameGrabber grabber) {
+        try {
+            grabber.stop();
+        } catch (Exception ignored) {
+        }
+        try {
+            grabber.release();
+        } catch (Exception ignored) {
+        }
+    }
+
+    private static String resolveCodecMode() {
+        if (!CODEC_MODE.isEmpty()) {
+            return CODEC_MODE;
+        }
+
+        synchronized (CODEC_MODE_LOCK) {
+            if (CODEC_MODE.isEmpty()) {
+                boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
+                CODEC_MODE = (isWindows && HardwareProbeUtility.isGpuAvailable()) ? "GPU" : "CPU";
+                System.out.println("ABR Encoder 编解码模式已锁定: " + CODEC_MODE);
+            }
+            return CODEC_MODE;
+        }
+    }
+
+    private String resolveGpuEncoderName() {
+        try {
+            String ffmpegExecutable = Loader.load(org.bytedeco.ffmpeg.ffmpeg.class);
+            ProcessBuilder processBuilder = new ProcessBuilder(ffmpegExecutable, "-hide_banner", "-encoders");
+            processBuilder.redirectErrorStream(true);
+
+            Process process = processBuilder.start();
+            StringBuilder output = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    output.append(line).append('\n');
+                }
+            }
+            process.waitFor();
+
+            String encoderOutput = output.toString();
+            for (String encoder : WINDOWS_GPU_ENCODER_PRIORITY) {
+                if (encoderOutput.contains(encoder)) {
+                    return encoder;
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
     }
 }

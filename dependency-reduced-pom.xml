@@ -44,6 +44,7 @@
   </build>
   <properties>
     <maven.compiler.release>21</maven.compiler.release>
+    <javacpp.windows.ffmpeg.classifier>windows-x86_64-gpl</javacpp.windows.ffmpeg.classifier>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <javafx.version>21.0.2</javafx.version>
     <javacpp.openblas.version>0.3.28-1.5.11</javacpp.openblas.version>

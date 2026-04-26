@@ -12,6 +12,7 @@
         <javacv.version>1.5.11</javacv.version>
         <javacpp.ffmpeg.version>7.1-1.5.11</javacpp.ffmpeg.version>
         <javacpp.opencv.version>4.10.0-1.5.11</javacpp.opencv.version>
+        <javacpp.windows.ffmpeg.classifier>windows-x86_64-gpl</javacpp.windows.ffmpeg.classifier>
 
         <javacpp.openblas.version>0.3.28-1.5.11</javacpp.openblas.version>
 
@@ -60,7 +61,13 @@
             <groupId>org.bytedeco</groupId>
             <artifactId>ffmpeg</artifactId>
             <version>${javacpp.ffmpeg.version}</version>
-            <classifier>windows-x86_64-gpl</classifier>
+            <classifier>${javacpp.windows.ffmpeg.classifier}</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>ffmpeg-platform-gpl</artifactId>
+            <version>${javacpp.ffmpeg.version}</version>
+            <scope>runtime</scope>
         </dependency>
 
         <dependency>
