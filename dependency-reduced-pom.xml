@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.github.specdock</groupId>
   <artifactId>video-frame-interpolator</artifactId>
-  <version>1.0-release</version>
+  <version>1.1-release</version>
   <build>
     <plugins>
       <plugin>
@@ -36,6 +36,38 @@
                   </excludes>
                 </filter>
               </filters>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.1.0</version>
+        <executions>
+          <execution>
+            <id>create-executable</id>
+            <phase>install</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <executable>${java.home}/bin/jpackage</executable>
+              <workingDirectory>${project.basedir}</workingDirectory>
+              <arguments>
+                <argument>--type</argument>
+                <argument>app-image</argument>
+                <argument>--name</argument>
+                <argument>${project.artifactId}</argument>
+                <argument>--input</argument>
+                <argument>${project.build.directory}</argument>
+                <argument>--main-jar</argument>
+                <argument>${project.build.finalName}.jar</argument>
+                <argument>--main-class</argument>
+                <argument>com.github.specdock.videoframeinterpolator.view.Application</argument>
+                <argument>--dest</argument>
+                <argument>${project.build.directory}/native-image</argument>
+              </arguments>
             </configuration>
           </execution>
         </executions>
